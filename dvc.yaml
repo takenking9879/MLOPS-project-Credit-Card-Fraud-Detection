@@ -1,0 +1,18 @@
+stages:
+  data_ingestion:
+    cmd: python src/data/data_ingestion.py
+    deps:
+    - src/data/data_ingestion.py
+    params:
+    - data_ingestion.train_size_fraud
+    - data_ingestion.train_size_authentic
+    - data_ingestion.val_size_fraud
+    - data_ingestion.val_size_authentic
+    - data_ingestion.test_size_fraud
+    - data_ingestion.test_size_authentic
+    - data_ingestion.predict_size_fraud
+    - data_ingestion.predict_size_authentic
+    outs:
+    - data/raw
+
+  
