@@ -14,6 +14,7 @@ stages:
     - data_ingestion.predict_size_authentic
     outs:
     - data/raw
+    - data/original
 
   data_preprocessing:
     cmd: python3 src/data/data_preprocessing.py

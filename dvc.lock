@@ -18,6 +18,11 @@ stages:
         data_ingestion.val_size_authentic: 0.15
         data_ingestion.val_size_fraud: 0.3
     outs:
+    - path: data/original
+      hash: md5
+      md5: 686b5cc46feda58c546491746e9c963e.dir
+      size: 324805985
+      nfiles: 1
     - path: data/raw
       hash: md5
       md5: 0f8156b8edf5b952a42e59dd7dbe28a1.dir
