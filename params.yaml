@@ -7,9 +7,10 @@ data_ingestion:
   test_size_authentic: 0.25
   predict_size_fraud: 0.05 
   predict_size_authentic: 0.05
- 
-
-
+   
+data_preprocessing:
+  scaler_method: 'standardscaler'   
+  
 model_building:
   ngram_range: [1, 3]  
   max_features: 1000

@@ -1,0 +1,61 @@
+schema: '2.0'
+stages:
+  data_ingestion:
+    cmd: python3 src/data/data_ingestion.py
+    deps:
+    - path: src/data/data_ingestion.py
+      hash: md5
+      md5: fbb3439a898afd4b3ba0d7444108c6ad
+      size: 7122
+    params:
+      params.yaml:
+        data_ingestion.predict_size_authentic: 0.05
+        data_ingestion.predict_size_fraud: 0.05
+        data_ingestion.test_size_authentic: 0.25
+        data_ingestion.test_size_fraud: 0.5
+        data_ingestion.train_size_authentic: 0.55
+        data_ingestion.train_size_fraud: 0.15
+        data_ingestion.val_size_authentic: 0.15
+        data_ingestion.val_size_fraud: 0.3
+    outs:
+    - path: data/raw
+      hash: md5
+      md5: 0f8156b8edf5b952a42e59dd7dbe28a1.dir
+      size: 317395219
+      nfiles: 4
+  data_preprocessing:
+    cmd: python3 src/data/data_preprocessing.py
+    deps:
+    - path: data/raw/predict.csv
+      hash: md5
+      md5: 27362361d2731d66477576bd4c00438a
+      size: 15871407
+    - path: data/raw/test.csv
+      hash: md5
+      md5: 186c3f59173869650924e17e4ad5c8f2
+      size: 119107092
+    - path: data/raw/train.csv
+      hash: md5
+      md5: 7982e0af4a51bfcd0500f728b8e80f68
+      size: 110952393
+    - path: data/raw/val.csv
+      hash: md5
+      md5: ee8923a7e3839fb884c633c31e177419
+      size: 71464327
+    - path: src/data/data_preprocessing.py
+      hash: md5
+      md5: 41c5edf7a1ec177cd5553eab8732f69a
+      size: 5358
+    params:
+      params.yaml:
+        data_preprocessing.scaler_method: standardscaler
+    outs:
+    - path: artifacts/scaler.pkl
+      hash: md5
+      md5: efaac5e22f73689e0f91dc5920f7c237
+      size: 1767
+    - path: data/processed
+      hash: md5
+      md5: 87f5766e3067d11fa925c1338ad13228.dir
+      size: 336669159
+      nfiles: 4
