@@ -30,6 +30,8 @@ from sklearn.ensemble import (
     ExtraTreesClassifier,
     HistGradientBoostingClassifier
 )
+from sklearn.inspection import permutation_importance
+
 
 # Logging
 logger = logging.getLogger('model_building')
@@ -125,7 +127,7 @@ class Model_Building:
         return model
 
     def train_and_save_models(self):
-        """Entrena todos los modelos definidos en params.yaml y los guarda"""
+        """Entrena todos los modelos definidos en params.yaml y los guarda, incluyendo feature importances"""
         train_path = self.params.get("model_building", {}).get(
             "train_path", os.path.join(self.processed_dir, "train_processed.csv")
         )
@@ -158,10 +160,40 @@ class Model_Building:
                 model_path = os.path.join(self.output_dir, model_filename)
                 joblib.dump(model, model_path)
 
+                # ---- Feature importance ----
+                fi = None
+                feature_names = X_train.columns.tolist()
+                try:
+                    if hasattr(model, "feature_importances_"):
+                        fi = model.feature_importances_
+                    elif hasattr(model, "coef_"):
+                        fi = model.coef_.flatten()
+                    else:
+                        # fallback a permutation importance
+                        perm_res = permutation_importance(
+                            model, X_train, y_train, n_repeats=10, random_state=42, n_jobs=-1
+                        )
+                        fi = perm_res.importances_mean
+
+                    fi_csv_path = None
+                    if fi is not None:
+                        fi_df = pd.DataFrame({
+                            "feature": feature_names,
+                            "importance": fi
+                        }).sort_values("importance", ascending=False)
+
+                        fi_csv_path = os.path.join(self.output_dir, f"{model_key}_{ts}_feature_importances.csv")
+                        fi_df.to_csv(fi_csv_path, index=False)
+                        logger.info("Feature importances guardadas en %s", fi_csv_path)
+                except Exception as e:
+                    logger.warning("No se pudieron calcular feature importances para %s: %s", model_key, e)
+
+                # Guardar metadata
                 meta = {
                     "model_key": model_key,
                     "model_class": model_cfg.get("class", model_key),
-                    "params": model_cfg.get("params", {})
+                    "params": model_cfg.get("params", {}),
+                    "feature_importances_file": fi_csv_path
                 }
                 meta_path = os.path.splitext(model_path)[0] + "_meta.json"
                 with open(meta_path, "w") as mf:
@@ -174,6 +206,7 @@ class Model_Building:
 
         logger.debug("Modelos entrenados: %s", saved_models)
         return saved_models
+
 
 
 def main():

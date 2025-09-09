@@ -292,6 +292,8 @@ class Model_Evaluation:
         Copia el .pkl seleccionado a final_model/ y guarda las métricas de validación (si se pasan)
         en final_model como '<model>_validation_metrics.json'. Las métricas de test se guardan
         posteriormente en '<model>_test_metrics.json' desde evaluate_on_test.
+        Además, si existe un CSV de feature_importances en models_dir (output de training) o en el meta,
+        lo copia a final_model.
         """
         try:
             # determinar destino del pkl final
@@ -308,16 +310,15 @@ class Model_Evaluation:
             except Exception as e:
                 logger.error("No se pudo copiar modelo final %s -> %s : %s", selected_model_path, dest_model_path, e)
 
-            # guardar metrics de validación en final_model con nombre claro
+            # guardar metrics de validación
             try:
                 if validation_metrics:
                     val_dst = os.path.join(self.final_model_dir, f"{model_name}_validation_metrics.json")
                     os.makedirs(os.path.dirname(val_dst), exist_ok=True)
                     with open(val_dst, "w") as f:
                         json.dump(validation_metrics, f, indent=2)
-                    logger.info("Métricas de validación copiada a %s", val_dst)
+                    logger.info("Métricas de validación copiadas a %s", val_dst)
                 else:
-                    # intentar copiar el archivo de metrics individual si existe en metrics_dir
                     src_val = os.path.join(self.metrics_dir, f"{model_name}_metrics.json")
                     if os.path.exists(src_val):
                         dst_val = os.path.join(self.final_model_dir, f"{model_name}_validation_metrics.json")
@@ -326,7 +327,59 @@ class Model_Evaluation:
             except Exception as e:
                 logger.error("No se pudieron guardar/copiar métricas de validación en final_model: %s", e)
 
-            # write a small best_model.json for other steps to read
+            # ---- copiar feature_importances CSV: primero intentar meta, luego buscar en models_dir ----
+            fi_dst_path = None
+            try:
+                # 1) intentar leer meta al lado del .pkl
+                meta_path = os.path.splitext(selected_model_path)[0] + "_meta.json"
+                fi_source = None
+                if os.path.exists(meta_path):
+                    try:
+                        with open(meta_path, "r") as mf:
+                            meta = json.load(mf)
+                        # esperar que meta tenga "feature_importances_file" con ruta relativa o absoluta
+                        fi_file = meta.get("feature_importances_file")
+                        if fi_file:
+                            # si es relativo, intentar relativo al root o al models_dir
+                            if os.path.isabs(fi_file) and os.path.exists(fi_file):
+                                fi_source = fi_file
+                            else:
+                                # relativo a models_dir o relativo al path del meta
+                                cand1 = os.path.join(self.models_dir, os.path.basename(fi_file))
+                                cand2 = os.path.join(os.path.dirname(meta_path), os.path.basename(fi_file))
+                                if os.path.exists(cand1):
+                                    fi_source = cand1
+                                elif os.path.exists(cand2):
+                                    fi_source = cand2
+                                else:
+                                    # if fi_file looks like full name with timestamp, try to join models_dir
+                                    cand3 = os.path.join(self.models_dir, fi_file)
+                                    if os.path.exists(cand3):
+                                        fi_source = cand3
+                    except Exception as e:
+                        logger.debug("No se pudo leer meta %s: %s", meta_path, e)
+
+                # 2) si no encontramos en meta, buscar en models_dir por pattern model_name*feature_importances.csv
+                if fi_source is None:
+                    pattern = os.path.join(self.models_dir, f"{model_name}*feature_importances.csv")
+                    candidates = glob.glob(pattern)
+                    if candidates:
+                        # elegir el más reciente (por si hay varios)
+                        candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+                        fi_source = candidates[0]
+
+                # 3) si encontramos fuente, copiar a final_model_dir con nombre estandar
+                if fi_source and os.path.exists(fi_source):
+                    os.makedirs(self.final_model_dir, exist_ok=True)
+                    fi_dst_path = os.path.join(self.final_model_dir, f"{model_name}_feature_importances.csv")
+                    shutil.copyfile(fi_source, fi_dst_path)
+                    logger.info("Feature importances CSV copiado desde %s a %s", fi_source, fi_dst_path)
+                else:
+                    logger.debug("No se encontró CSV de feature importances para %s (buscado en meta y en %s)", model_name, self.models_dir)
+            except Exception as e:
+                logger.warning("No se pudo copiar feature_importances CSV: %s", e)
+
+            # write best_model.json
             try:
                 best_info = {
                     "model_name": model_name,
@@ -334,6 +387,7 @@ class Model_Evaluation:
                     "promoted_path": os.path.abspath(dest_model_path),
                     "validation_metrics_path": os.path.abspath(os.path.join(self.final_model_dir, f"{model_name}_validation_metrics.json")),
                     "test_metrics_path": os.path.abspath(os.path.join(self.final_model_dir, f"{model_name}_test_metrics.json")),
+                    "feature_importances_path": os.path.abspath(fi_dst_path) if fi_dst_path else None,
                     "timestamp": int(time.time())
                 }
                 best_file = os.path.join(self.root_dir, "models", "best_model.json")
@@ -345,6 +399,8 @@ class Model_Evaluation:
 
         except Exception as e:
             logger.error("Error en promoción del modelo final: %s", e)
+
+
 
     def evaluate_on_test(self, selected_model_path: str) -> Dict[str, Any]:
         """

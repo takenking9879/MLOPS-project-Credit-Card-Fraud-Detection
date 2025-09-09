@@ -77,8 +77,8 @@ stages:
       size: 73348763
     - path: src/model/model_building.py
       hash: md5
-      md5: eed5200f14225feefe88a0a9181a81cf
-      size: 6691
+      md5: c69fa63ecbf4bf8241977aff4625bd3a
+      size: 8274
     params:
       params.yaml:
         model_building.models:
@@ -120,9 +120,9 @@ stages:
     outs:
     - path: models/saved_models/
       hash: md5
-      md5: e76357a0c43c9d8fb5e8e5de90fa191b.dir
-      size: 9622664
-      nfiles: 10
+      md5: dcbb5c9f232bbaab425546bf84627303.dir
+      size: 9626557
+      nfiles: 15
   model_evaluation:
     cmd: python3 src/model/model_evaluation.py
     deps:
@@ -136,13 +136,13 @@ stages:
       size: 73348763
     - path: models/saved_models
       hash: md5
-      md5: e76357a0c43c9d8fb5e8e5de90fa191b.dir
-      size: 9622664
-      nfiles: 10
+      md5: dcbb5c9f232bbaab425546bf84627303.dir
+      size: 9626557
+      nfiles: 15
     - path: src/model/model_evaluation.py
       hash: md5
-      md5: 747c813da17205b2d1ffcdd481d49e51
-      size: 32322
+      md5: 230d618d4a54583756673b298be8e305
+      size: 35698
     params:
       params.yaml:
         model_evaluation.experiment_name: credit-card-fraud
@@ -166,21 +166,21 @@ stages:
     outs:
     - path: models/best_model.json
       hash: md5
-      md5: e967e242b0addab125cbac4e47f60a1e
-      size: 800
+      md5: c335424c45c09bec263d81d8a648b4c9
+      size: 999
     - path: models/confusion_matrices/
       hash: md5
-      md5: 00d1dec0ce8c50d85a73476f0145a364.dir
-      size: 118634
+      md5: c9f3cf367f07921f2db4b76cd7924131.dir
+      size: 119039
       nfiles: 5
     - path: models/metrics
       hash: md5
-      md5: ef71bea293a4e1c4a9ce089bb188ac02.dir
+      md5: 9c2af5f5f7c79ab8e78e9d69ce801cf3.dir
       size: 9742
       nfiles: 6
     - path: models/selection_summary.json
       hash: md5
-      md5: 9ab7674030a01d4efce9bb0f00808a10
+      md5: 46eb0dc02fd4f350cfae5b253c5d6fb4
       size: 1278
   model_final:
     cmd: python3 src/model/model_final.py
