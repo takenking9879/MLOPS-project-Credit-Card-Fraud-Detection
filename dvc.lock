@@ -49,18 +49,159 @@ stages:
       size: 71464327
     - path: src/data/data_preprocessing.py
       hash: md5
-      md5: 41c5edf7a1ec177cd5553eab8732f69a
-      size: 5358
+      md5: 97d4b0ef2f5d77891398bf22c1ec2743
+      size: 5894
     params:
       params.yaml:
         data_preprocessing.scaler_method: standardscaler
     outs:
     - path: artifacts/scaler.pkl
       hash: md5
-      md5: efaac5e22f73689e0f91dc5920f7c237
-      size: 1767
+      md5: e9f05d503a7ae734c0cca386529e38ed
+      size: 1711
     - path: data/processed
       hash: md5
-      md5: 87f5766e3067d11fa925c1338ad13228.dir
-      size: 336669159
+      md5: a9a2b04b8bb2693eb532af8b3654f6a1.dir
+      size: 326718138
       nfiles: 4
+  model_building:
+    cmd: python3 src/model/model_building.py
+    deps:
+    - path: data/processed/train_processed.csv
+      hash: md5
+      md5: c1df6e45ac83b85f78ac50ea5e0eb0ce
+      size: 114782142
+    - path: data/processed/val_processed.csv
+      hash: md5
+      md5: fe516f726ee1f52d436d6e77ae51a05f
+      size: 73348763
+    - path: src/model/model_building.py
+      hash: md5
+      md5: eed5200f14225feefe88a0a9181a81cf
+      size: 6691
+    params:
+      params.yaml:
+        model_building.models:
+          logistic_regression:
+            class: sklearn.linear_model.LogisticRegression
+            params:
+              C: 1.0
+              max_iter: 1000
+              random_state: 42
+              n_jobs: -1
+          random_forest:
+            class: sklearn.ensemble.RandomForestClassifier
+            params:
+              n_estimators: 200
+              max_depth: 10
+              random_state: 42
+              n_jobs: -1
+          gradient_boosting:
+            class: sklearn.ensemble.HistGradientBoostingClassifier
+            params:
+              max_iter: 200
+              learning_rate: 0.1
+              max_depth: 10
+              random_state: 42
+          lgbm:
+            class: lightgbm.LGBMClassifier
+            params:
+              n_estimators: 300
+              learning_rate: 0.05
+              random_state: 42
+              n_jobs: -1
+          xgboost:
+            class: xgboost.XGBClassifier
+            params:
+              n_estimators: 300
+              learning_rate: 0.05
+              random_state: 42
+              n_jobs: -1
+    outs:
+    - path: models/saved_models/
+      hash: md5
+      md5: e76357a0c43c9d8fb5e8e5de90fa191b.dir
+      size: 9622664
+      nfiles: 10
+  model_evaluation:
+    cmd: python3 src/model/model_evaluation.py
+    deps:
+    - path: data/processed/test_processed.csv
+      hash: md5
+      md5: c17fd5130cdcb2aa9d89924e7ade928e
+      size: 122250170
+    - path: data/processed/val_processed.csv
+      hash: md5
+      md5: fe516f726ee1f52d436d6e77ae51a05f
+      size: 73348763
+    - path: models/saved_models
+      hash: md5
+      md5: e76357a0c43c9d8fb5e8e5de90fa191b.dir
+      size: 9622664
+      nfiles: 10
+    - path: src/model/model_evaluation.py
+      hash: md5
+      md5: 747c813da17205b2d1ffcdd481d49e51
+      size: 32322
+    params:
+      params.yaml:
+        model_evaluation.experiment_name: credit-card-fraud
+        model_evaluation.selection:
+          mode: combined
+          num_classes: 2
+          combined_overall_weight: 0.4
+          overall:
+            accuracy: 0.0
+            recall: 0.0
+            precision: 0.0
+            f1_score: 0.0
+            roc_auc: 1.0
+          specific:
+            1_recall: 3
+            1_precision: 2
+            0_recall: 0
+            0_precision: 0
+        model_evaluation.tracking_uri: 
+          https://dagshub.com/takenking9879/MLOPS-project-Credit-Card-Fraud-Detection.mlflow
+    outs:
+    - path: models/best_model.json
+      hash: md5
+      md5: e967e242b0addab125cbac4e47f60a1e
+      size: 800
+    - path: models/confusion_matrices/
+      hash: md5
+      md5: 00d1dec0ce8c50d85a73476f0145a364.dir
+      size: 118634
+      nfiles: 5
+    - path: models/metrics
+      hash: md5
+      md5: ef71bea293a4e1c4a9ce089bb188ac02.dir
+      size: 9742
+      nfiles: 6
+    - path: models/selection_summary.json
+      hash: md5
+      md5: 9ab7674030a01d4efce9bb0f00808a10
+      size: 1278
+  model_final:
+    cmd: python3 src/model/model_final.py
+    deps:
+    - path: data/processed/test_processed.csv
+      hash: md5
+      md5: c17fd5130cdcb2aa9d89924e7ade928e
+      size: 122250170
+    - path: src/model/model_final.py
+      hash: md5
+      md5: 6d849becda0d406c5ec32cc11bcf5516
+      size: 6485
+    params:
+      params.yaml:
+        model_final.model_name: gradient_boosting_20250909_132623
+        model_final.output_metrics_path: models/final_model/metrics.json
+        model_final.output_model_path: 
+          models/final_model/gradient_boosting_20250909_132623.pkl
+        model_final.test_path: data/processed/test_processed.csv
+    outs:
+    - path: models/final_model/metrics.json
+      hash: md5
+      md5: b19d9862d5ae9c2108beb92fbd6bcdb5
+      size: 169

@@ -30,4 +30,30 @@ stages:
     - data/processed
     - artifacts/scaler.pkl
 
-  
+  model_building:
+    cmd: python3 src/model/model_building.py
+    deps:
+    - src/model/model_building.py
+    - data/processed/train_processed.csv
+    - data/processed/val_processed.csv
+    params:
+    - model_building.models
+    outs:
+    - models/saved_models/
+
+  model_evaluation:
+    cmd: python3 src/model/model_evaluation.py
+    deps:
+    - src/model/model_evaluation.py
+    - data/processed/val_processed.csv
+    - data/processed/test_processed.csv
+    - models/saved_models
+    params:
+    - model_evaluation.tracking_uri
+    - model_evaluation.experiment_name
+    - model_evaluation.selection
+    outs:
+    - models/confusion_matrices/     # DVC va a ignorar estos archivos en git pero los gestiona en su cache
+    - models/metrics
+    - models/best_model.json
+    - models/selection_summary.json

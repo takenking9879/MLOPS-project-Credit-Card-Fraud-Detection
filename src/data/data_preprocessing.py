@@ -49,12 +49,18 @@ class DataPreprocessing:
 
     def load_params(self) -> dict:
         try:
-            with open(self.params_path, 'r') as f:
-                params = yaml.safe_load(f)
-            logger.debug(f"Parameters loaded from {self.params_path}")
+            with open(self.params_path, 'r') as file:
+                params = yaml.safe_load(file)
+            logger.debug('Parameters retrieved from %s', self.params_path)
             return params
+        except FileNotFoundError:
+            logger.error('File not found: %s', self.params_path)
+            raise
+        except yaml.YAMLError as e:
+            logger.error('YAML error: %s', e)
+            raise
         except Exception as e:
-            logger.error(f"Error loading YAML parameters: {e}")
+            logger.error('Unexpected error: %s', e)
             raise
 
     def load_data(self, filenames: list[str]) -> dict[str, pd.DataFrame]:
@@ -74,16 +80,25 @@ class DataPreprocessing:
 
     def normalize(self, df: pd.DataFrame, fit: bool = True) -> pd.DataFrame:
         try:
+            target = df['Class']          # <-- guardamos Class en target
+            df = df.drop(columns=['Class']) 
+            
             if fit:
                 df_scaled = self.scaler.fit_transform(df)
                 logger.debug("Data normalized with fit_transform")
             else:
                 df_scaled = self.scaler.transform(df)
                 logger.debug("Data normalized with transform")
-            return pd.DataFrame(df_scaled, columns=df.columns)
+            
+            # Convertir a DataFrame y agregar la columna target
+            df_scaled = pd.DataFrame(df_scaled, columns=df.columns)
+            df_scaled['target'] = target   # <-- agregamos target de vuelta
+
+            return df_scaled
         except Exception as e:
             logger.error(f"Error normalizing data: {e}")
             raise
+
 
     def save_datasets(self, datasets: dict[str, pd.DataFrame]) -> None:
         try:
