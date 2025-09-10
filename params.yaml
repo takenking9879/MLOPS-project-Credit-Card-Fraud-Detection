@@ -9,7 +9,8 @@ data_ingestion:
   predict_size_authentic: 0.05
    
 data_preprocessing:
-  scaler_method: 'standardscaler'   
+  scaler_method: 'standardscaler'
+  imputer_method: 'knnimputer'   
 
 model_building:
   models:

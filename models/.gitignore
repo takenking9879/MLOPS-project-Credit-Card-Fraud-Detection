@@ -1,6 +1,5 @@
-/confusion_matrices
-/metrics.json
 /saved_models
+/confusion_matrices
 /metrics
 /best_model.json
 /selection_summary.json

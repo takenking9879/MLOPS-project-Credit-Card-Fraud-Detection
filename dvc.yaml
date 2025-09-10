@@ -3,6 +3,7 @@ stages:
     cmd: python3 src/data/data_ingestion.py
     deps:
     - src/data/data_ingestion.py
+    - src/utils.py
     params:
     - data_ingestion.train_size_fraud
     - data_ingestion.train_size_authentic
@@ -20,20 +21,22 @@ stages:
     cmd: python3 src/data/data_preprocessing.py
     deps:
     - src/data/data_preprocessing.py
+    - src/utils.py
     - data/raw/train.csv
     - data/raw/val.csv
     - data/raw/test.csv
     - data/raw/predict.csv
     params:
       - data_preprocessing.scaler_method
+      - data_preprocessing.imputer_method
     outs:
     - data/processed
-    - artifacts/scaler.pkl
 
   model_building:
     cmd: python3 src/model/model_building.py
     deps:
     - src/model/model_building.py
+    - src/utils.py
     - data/processed/train_processed.csv
     - data/processed/val_processed.csv
     params:
@@ -45,6 +48,7 @@ stages:
     cmd: python3 src/model/model_evaluation.py
     deps:
     - src/model/model_evaluation.py
+    - src/utils.py
     - data/processed/val_processed.csv
     - data/processed/test_processed.csv
     - models/saved_models

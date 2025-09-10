@@ -7,7 +7,6 @@ from typing import Dict, Any
 import re
 import importlib
 
-
 import pandas as pd
 import joblib
 import yaml
@@ -31,26 +30,12 @@ from sklearn.ensemble import (
     HistGradientBoostingClassifier
 )
 from sklearn.inspection import permutation_importance
-
+from utils import create_logger, BaseUtils
 
 # Logging
-logger = logging.getLogger('model_building')
-logger.setLevel(logging.DEBUG)
+logger = create_logger('model_building', 'model_building_errors.log')
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-file_handler = logging.FileHandler('model_building_errors.log')
-file_handler.setLevel(logging.ERROR)
-
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-file_handler.setFormatter(formatter)
-
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
-
-
-class Model_Building:
+class Model_Building(BaseUtils):
     """
     ModelBuilder encapsula:
     - Carga de parámetros desde params.yaml
@@ -60,7 +45,7 @@ class Model_Building:
     """
 
     def __init__(self, params_path: str, processed_dir: str, output_dir: str = None):
-        self.params_path = params_path
+        super().__init__(logger=logger,params_path=params_path)
         self.processed_dir = processed_dir
         self.params = self.load_params()
         # -------------------------------------------------------------
@@ -73,30 +58,14 @@ class Model_Building:
         os.makedirs(self.output_dir, exist_ok=True)
         # -------------------------------------------------------------
 
-    def load_params(self) -> dict:
-        try:
-            with open(self.params_path, 'r') as file:
-                params = yaml.safe_load(file)
-            logger.debug('Parameters retrieved from %s', self.params_path)
-            return params
-        except FileNotFoundError:
-            logger.error('File not found: %s', self.params_path)
-            raise
-        except yaml.YAMLError as e:
-            logger.error('YAML error: %s', e)
-            raise
-        except Exception as e:
-            logger.error('Unexpected error: %s', e)
-            raise
-
     def _load_preprocessed_csv(self, path: str) -> pd.DataFrame:
         """Carga un CSV procesado"""
         try:
             df = pd.read_csv(path)
-            logger.debug("Dataset cargado %s con forma %s", path, df.shape)
+            self.logger.debug("Dataset cargado %s con forma %s", path, df.shape)
             return df
         except Exception as e:
-            logger.error("Error cargando CSV %s: %s", path, e)
+            self.logger.error("Error cargando CSV %s: %s", path, e)
             raise
 
     def _model_factory(self, model_key: str, model_cfg: Dict[str, Any]):
@@ -151,7 +120,7 @@ class Model_Building:
         saved_models = []
         for model_key, model_cfg in models_cfg.items():
             try:
-                logger.info("Entrenando modelo: %s", model_key)
+                self.logger.info("Entrenando modelo: %s", model_key)
                 model = self._model_factory(model_key, model_cfg)
                 model.fit(X_train, y_train)
 
@@ -184,9 +153,9 @@ class Model_Building:
 
                         fi_csv_path = os.path.join(self.output_dir, f"{model_key}_{ts}_feature_importances.csv")
                         fi_df.to_csv(fi_csv_path, index=False)
-                        logger.info("Feature importances guardadas en %s", fi_csv_path)
+                        self.logger.info("Feature importances guardadas en %s", fi_csv_path)
                 except Exception as e:
-                    logger.warning("No se pudieron calcular feature importances para %s: %s", model_key, e)
+                    self.logger.warning("No se pudieron calcular feature importances para %s: %s", model_key, e)
 
                 # Guardar metadata
                 meta = {
@@ -200,11 +169,11 @@ class Model_Building:
                     json.dump(meta, mf, indent=2)
 
                 saved_models.append({"model_path": model_path, "meta_path": meta_path})
-                logger.info("Modelo %s guardado en %s", model_key, model_path)
+                self.logger.info("Modelo %s guardado en %s", model_key, model_path)
             except Exception as e:
-                logger.error("Error entrenando/guardando modelo %s: %s", model_key, e)
+                self.logger.error("Error entrenando/guardando modelo %s: %s", model_key, e)
 
-        logger.debug("Modelos entrenados: %s", saved_models)
+        self.logger.debug("Modelos entrenados: %s", saved_models)
         return saved_models
 
 
@@ -220,7 +189,7 @@ def main():
         builder = Model_Building(params_path, processed_dir, output_dir)
         builder.train_and_save_models()
     except Exception as e:
-        logger.error("Error en main de model_building: %s", e)
+        builder.logger.error("Error en main de model_building: %s", e)
         raise
 
 

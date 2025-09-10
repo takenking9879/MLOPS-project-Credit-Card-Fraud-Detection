@@ -2,65 +2,57 @@ import os
 import pandas as pd
 import logging
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.impute import KNNImputer, SimpleImputer
 import yaml
 import joblib
+from utils import create_logger, BaseUtils
 
 # Logging configuration
-logger = logging.getLogger('data_preprocessing')
-logger.setLevel(logging.DEBUG)
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-file_handler = logging.FileHandler('preprocessing_errors.log')
-file_handler.setLevel(logging.ERROR)
+logger = create_logger('data_preprocessing', 'preprocessing_errors.log')
 
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-file_handler.setFormatter(formatter)
-
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
-
-
-class DataPreprocessing:
+class DataPreprocessing(BaseUtils):
     def __init__(self, params_path: str, raw_data_dir: str, preprocessed_data_dir: str = None):
-        self.params_path = params_path
+        super().__init__(logger=logger,params_path=params_path)
         self.raw_data_dir = raw_data_dir
         self.preprocessed_data_dir = preprocessed_data_dir or os.path.join("data", "processed")
         self.params = self.load_params()
         self.scaler = self._choose_scaler()
+        self.imputer = self._choose_imputer()
 
     def _choose_scaler(self):
-        try:
-            scaler_type = self.params['data_preprocessing']['scaler_method'].lower()
-            if scaler_type == 'standardscaler':
-                scaler = StandardScaler()
-            elif scaler_type == 'minmaxscaler':
-                scaler = MinMaxScaler()
-            elif scaler_type == 'robustscaler':
-                scaler = RobustScaler()
-            else:
-                raise ValueError(f"Unknown scaler_method '{scaler_type}' in params.yaml")
-            logger.debug(f"Scaler chosen: {scaler.__class__.__name__}")
-            return scaler
-        except Exception as e:
-            logger.error(f"Error choosing scaler: {e}")
-            raise
+            try:
+                scalers = {
+                    "standardscaler": StandardScaler,
+                    "minmaxscaler": MinMaxScaler,
+                    "robustscaler": RobustScaler
+                }
+                scaler_type = self.params['data_preprocessing']['scaler_method'].lower()
+                if scaler_type not in scalers:
+                    raise ValueError(f"Unknown scaler_method '{scaler_type}' in params.yaml")
+                
+                scaler = scalers[scaler_type]()
+                self.logger.debug(f"Scaler chosen: {scaler.__class__.__name__}")
+                return scaler
+            except Exception as e:
+                self.logger.error(f"Error choosing scaler: {e}")
+                raise
 
-    def load_params(self) -> dict:
+    def _choose_imputer(self):
         try:
-            with open(self.params_path, 'r') as file:
-                params = yaml.safe_load(file)
-            logger.debug('Parameters retrieved from %s', self.params_path)
-            return params
-        except FileNotFoundError:
-            logger.error('File not found: %s', self.params_path)
-            raise
-        except yaml.YAMLError as e:
-            logger.error('YAML error: %s', e)
-            raise
+            imputers = {
+                "knnimputer": KNNImputer,
+                "simpleimputer": lambda: SimpleImputer(strategy='mean')
+            }
+            imputer_type = self.params['data_preprocessing']['imputer_method'].lower()
+            if imputer_type not in imputers:
+                raise ValueError(f"Unknown imputer_method '{imputer_type}' in params.yaml")
+            
+            imputer = imputers[imputer_type]()
+            self.logger.debug(f"Imputer chosen: {imputer.__class__.__name__}")
+            return imputer
         except Exception as e:
-            logger.error('Unexpected error: %s', e)
+            self.logger.error(f"Error choosing imputer: {e}")
             raise
 
     def load_data(self, filenames: list[str]) -> dict[str, pd.DataFrame]:
@@ -72,9 +64,9 @@ class DataPreprocessing:
                 if 'id' in df.columns:
                     df = df.drop(columns='id')
                 datasets[file.split('.')[0]] = df
-                logger.debug(f"Loaded {file} with shape {df.shape}")
+                self.logger.debug(f"Loaded {file} with shape {df.shape}")
             except Exception as e:
-                logger.error(f"Error loading {file}: {e}")
+                self.logger.error(f"Error loading {file}: {e}")
                 raise
         return datasets
 
@@ -85,10 +77,10 @@ class DataPreprocessing:
             
             if fit:
                 df_scaled = self.scaler.fit_transform(df)
-                logger.debug("Data normalized with fit_transform")
+                self.logger.debug("Data normalized with fit_transform")
             else:
                 df_scaled = self.scaler.transform(df)
-                logger.debug("Data normalized with transform")
+                self.logger.debug("Data normalized with transform")
             
             # Convertir a DataFrame y agregar la columna target
             df_scaled = pd.DataFrame(df_scaled, columns=df.columns)
@@ -96,7 +88,7 @@ class DataPreprocessing:
 
             return df_scaled
         except Exception as e:
-            logger.error(f"Error normalizing data: {e}")
+            self.logger.error(f"Error normalizing data: {e}")
             raise
 
 
@@ -106,9 +98,9 @@ class DataPreprocessing:
             for name, df in datasets.items():
                 file_path = os.path.join(self.preprocessed_data_dir, f"{name}_processed.csv")
                 df.to_csv(file_path, index=False)
-                logger.debug(f"Saved {name} to {file_path}")
+                self.logger.debug(f"Saved {name} to {file_path}")
         except Exception as e:
-            logger.error(f"Error saving datasets: {e}")
+            self.logger.error(f"Error saving datasets: {e}")
             raise
 
     def save_scaler(self, filename: str = "scaler.pkl") -> None:
@@ -117,9 +109,20 @@ class DataPreprocessing:
             os.makedirs(artifacts_dir, exist_ok=True)
             save_path = os.path.join(artifacts_dir, filename)
             joblib.dump(self.scaler, save_path)
-            logger.debug(f"Scaler guardado en {save_path}")
+            self.logger.debug(f"Scaler guardado en {save_path}")
         except Exception as e:
-            logger.error(f"No se pudo guardar el scaler: {e}")
+            self.logger.error(f"No se pudo guardar el scaler: {e}")
+            raise
+
+    def save_imputer(self, filename: str = "imputer.pkl") -> None:
+        try:
+            artifacts_dir = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')), "artifacts")
+            os.makedirs(artifacts_dir, exist_ok=True)
+            save_path = os.path.join(artifacts_dir, filename)
+            joblib.dump(self.imputer, save_path)
+            self.logger.debug(f"imputer guardado en {save_path}")
+        except Exception as e:
+            self.logger.error(f"No se pudo guardar el imputer: {e}")
             raise
 
 
@@ -149,8 +152,11 @@ def main():
         # Guardar scaler
         dp.save_scaler()
 
+        # Guardar imputer
+        dp.save_imputer()
+
     except Exception as e:
-        logger.error(f"Failed to complete the data preprocessing pipeline: {e}")
+        dp.logger.error(f"Failed to complete the data preprocessing pipeline: {e}")
         print(f"Error: {e}")
 
 

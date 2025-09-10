@@ -21,28 +21,15 @@ from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_s
 from mlflow.models import infer_signature
 import mlflow
 import mlflow.sklearn
+from utils import create_logger, BaseUtils
 
 # --- DAGSHUB ---
 import dagshub
 
 # Logging
-logger = logging.getLogger('model_evaluation')
-logger.setLevel(logging.DEBUG)
+logger = create_logger('model_evaluation', 'model_evaluation_errors.log')
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-file_handler = logging.FileHandler('model_evaluation_errors.log')
-file_handler.setLevel(logging.ERROR)
-
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-file_handler.setFormatter(formatter)
-
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
-
-
-class Model_Evaluation:
+class Model_Evaluation(BaseUtils):
     """
     Clase que evalúa modelos entrenados:
     - Carga de parámetros
@@ -54,7 +41,7 @@ class Model_Evaluation:
     """
 
     def __init__(self, params_path: str):
-        self.params_path = params_path
+        super().__init__(logger=logger,params_path=params_path)
         self.params = self.load_params()
 
         # --- Inicialización Dagshub ---
@@ -66,7 +53,7 @@ class Model_Evaluation:
                 mlflow=True
             )
         except Exception as e:
-            logger.warning("dagshub.init() falló o no está disponible: %s", e)
+            self.logger.warning("dagshub.init() falló o no está disponible: %s", e)
 
         # Configuración MLflow usando la sección model_evaluation
         self.tracking_uri = dh_cfg.get("tracking_uri", None)
@@ -111,11 +98,11 @@ class Model_Evaluation:
         self.final_metrics_path = mf_cfg.get("output_metrics_path", os.path.join(self.final_model_dir, "metrics.json"))
         self.test_path = mf_cfg.get("test_path", os.path.join(self.processed_dir, "test_processed.csv"))
 
-        logger.debug(f"Root dir: {self.root_dir}")
-        logger.debug(f"Models dir (busqueda .pkl): {self.models_dir}")
-        logger.debug(f"Confusion matrices dir: {self.cm_dir}")
-        logger.debug(f"Metrics dir: {self.metrics_dir}")
-        logger.debug(f"Final model dir default: {self.final_model_dir}, final_model_path param: {self.final_model_path}")
+        self.logger.debug(f"Root dir: {self.root_dir}")
+        self.logger.debug(f"Models dir (busqueda .pkl): {self.models_dir}")
+        self.logger.debug(f"Confusion matrices dir: {self.cm_dir}")
+        self.logger.debug(f"Metrics dir: {self.metrics_dir}")
+        self.logger.debug(f"Final model dir default: {self.final_model_dir}, final_model_path param: {self.final_model_path}")
 
         # --- CHANGED: selection config support (overall / specific / combined) ---
         sel_cfg = self.params.get("model_evaluation", {}).get("selection", {})
@@ -130,35 +117,18 @@ class Model_Evaluation:
         if legacy_weights and not (self.weights_overall or self.weights_specific):
             self.weights_overall = legacy_weights
 
-        logger.debug(f"Selection mode: {self.selection_mode}, num_classes: {self.num_classes}")
-        logger.debug(f"Overall weights keys: {list(self.weights_overall.keys())}")
-        logger.debug(f"Specific weights keys: {list(self.weights_specific.keys())}")
-
-
-    def load_params(self) -> dict:
-        try:
-            with open(self.params_path, 'r') as file:
-                params = yaml.safe_load(file)
-            logger.debug('Parameters retrieved from %s', self.params_path)
-            return params
-        except FileNotFoundError:
-            logger.error('File not found: %s', self.params_path)
-            raise
-        except yaml.YAMLError as e:
-            logger.error('YAML error: %s', e)
-            raise
-        except Exception as e:
-            logger.error('Unexpected error: %s', e)
-            raise
+        self.logger.debug(f"Selection mode: {self.selection_mode}, num_classes: {self.num_classes}")
+        self.logger.debug(f"Overall weights keys: {list(self.weights_overall.keys())}")
+        self.logger.debug(f"Specific weights keys: {list(self.weights_specific.keys())}")
 
     def load_csv(self, path: str) -> pd.DataFrame:
         """Carga un CSV"""
         try:
             df = pd.read_csv(path)
-            logger.debug("Dataset cargado %s con forma %s", path, df.shape)
+            self.logger.debug("Dataset cargado %s con forma %s", path, df.shape)
             return df
         except Exception as e:
-            logger.error("Error cargando CSV %s: %s", path, e)
+            self.logger.error("Error cargando CSV %s: %s", path, e)
             raise
 
     def _resolve_metric_value(self, metrics: Dict[str, Any], key: str):
@@ -212,7 +182,7 @@ class Model_Evaluation:
 
             return None
         except Exception as e:
-            logger.debug("Error resolviendo métrica %s: %s", key, e)
+            self.logger.debug("Error resolviendo métrica %s: %s", key, e)
             return None
 
     def _compute_weighted_score(self, metrics: Dict[str, Any], weights: Dict[str, float]) -> float:
@@ -242,7 +212,7 @@ class Model_Evaluation:
                         sum_pos += float(w)
                     sum_abs += abs(float(w))
                 except Exception as e:
-                    logger.debug("Error al procesar peso %s=%s : %s", k, w, e)
+                    self.logger.debug("Error al procesar peso %s=%s : %s", k, w, e)
                     continue
 
             if not found_any:
@@ -267,7 +237,7 @@ class Model_Evaluation:
             normalized = max(0.0, min(1.0, normalized))
             return normalized
         except Exception as e:
-            logger.error("Error calculando score ponderado: %s", e)
+            self.logger.error("Error calculando score ponderado: %s", e)
             return 0.0
 
     def _compute_selection_score(self, metrics: Dict[str, Any]) -> float:
@@ -284,7 +254,7 @@ class Model_Evaluation:
             else:
                 return self._compute_weighted_score(metrics, self.weights_overall)
         except Exception as e:
-            logger.error("Error calculando selection score (mode=%s): %s", self.selection_mode, e)
+            self.logger.error("Error calculando selection score (mode=%s): %s", self.selection_mode, e)
             return 0.0
 
     def _promote_final_model(self, selected_model_path: str, model_name: str, validation_metrics: Dict[str, Any]):
@@ -306,9 +276,9 @@ class Model_Evaluation:
             # copiar el pkl
             try:
                 shutil.copyfile(selected_model_path, dest_model_path)
-                logger.info("Modelo final copiado a %s", dest_model_path)
+                self.logger.info("Modelo final copiado a %s", dest_model_path)
             except Exception as e:
-                logger.error("No se pudo copiar modelo final %s -> %s : %s", selected_model_path, dest_model_path, e)
+                self.logger.error("No se pudo copiar modelo final %s -> %s : %s", selected_model_path, dest_model_path, e)
 
             # guardar metrics de validación
             try:
@@ -317,15 +287,15 @@ class Model_Evaluation:
                     os.makedirs(os.path.dirname(val_dst), exist_ok=True)
                     with open(val_dst, "w") as f:
                         json.dump(validation_metrics, f, indent=2)
-                    logger.info("Métricas de validación copiadas a %s", val_dst)
+                    self.logger.info("Métricas de validación copiadas a %s", val_dst)
                 else:
                     src_val = os.path.join(self.metrics_dir, f"{model_name}_metrics.json")
                     if os.path.exists(src_val):
                         dst_val = os.path.join(self.final_model_dir, f"{model_name}_validation_metrics.json")
                         shutil.copyfile(src_val, dst_val)
-                        logger.info("Métricas de validación copiadas desde %s a %s", src_val, dst_val)
+                        self.logger.info("Métricas de validación copiadas desde %s a %s", src_val, dst_val)
             except Exception as e:
-                logger.error("No se pudieron guardar/copiar métricas de validación en final_model: %s", e)
+                self.logger.error("No se pudieron guardar/copiar métricas de validación en final_model: %s", e)
 
             # ---- copiar feature_importances CSV: primero intentar meta, luego buscar en models_dir ----
             fi_dst_path = None
@@ -357,7 +327,7 @@ class Model_Evaluation:
                                     if os.path.exists(cand3):
                                         fi_source = cand3
                     except Exception as e:
-                        logger.debug("No se pudo leer meta %s: %s", meta_path, e)
+                        self.logger.debug("No se pudo leer meta %s: %s", meta_path, e)
 
                 # 2) si no encontramos en meta, buscar en models_dir por pattern model_name*feature_importances.csv
                 if fi_source is None:
@@ -373,11 +343,11 @@ class Model_Evaluation:
                     os.makedirs(self.final_model_dir, exist_ok=True)
                     fi_dst_path = os.path.join(self.final_model_dir, f"{model_name}_feature_importances.csv")
                     shutil.copyfile(fi_source, fi_dst_path)
-                    logger.info("Feature importances CSV copiado desde %s a %s", fi_source, fi_dst_path)
+                    self.logger.info("Feature importances CSV copiado desde %s a %s", fi_source, fi_dst_path)
                 else:
-                    logger.debug("No se encontró CSV de feature importances para %s (buscado en meta y en %s)", model_name, self.models_dir)
+                    self.logger.debug("No se encontró CSV de feature importances para %s (buscado en meta y en %s)", model_name, self.models_dir)
             except Exception as e:
-                logger.warning("No se pudo copiar feature_importances CSV: %s", e)
+                self.logger.warning("No se pudo copiar feature_importances CSV: %s", e)
 
             # write best_model.json
             try:
@@ -393,12 +363,12 @@ class Model_Evaluation:
                 best_file = os.path.join(self.root_dir, "models", "best_model.json")
                 with open(best_file, "w") as bf:
                     json.dump(best_info, bf, indent=2)
-                logger.info("Best model info written to %s", best_file)
+                self.logger.info("Best model info written to %s", best_file)
             except Exception as e:
-                logger.error("No se pudo escribir best_model.json: %s", e)
+                self.logger.error("No se pudo escribir best_model.json: %s", e)
 
         except Exception as e:
-            logger.error("Error en promoción del modelo final: %s", e)
+            self.logger.error("Error en promoción del modelo final: %s", e)
 
 
 
@@ -413,7 +383,7 @@ class Model_Evaluation:
                 raise FileNotFoundError(f"Selected model not found: {selected_model_path}")
             model = joblib.load(selected_model_path)
         except Exception as e:
-            logger.error("Error cargando modelo seleccionado para evaluación en test: %s", e)
+            self.logger.error("Error cargando modelo seleccionado para evaluación en test: %s", e)
             return metrics
 
         # Cargar test
@@ -421,9 +391,9 @@ class Model_Evaluation:
             if not os.path.exists(self.test_path):
                 raise FileNotFoundError(f"No se encontró test dataset: {self.test_path}")
             df_test = pd.read_csv(self.test_path)
-            logger.info("Test dataset cargado desde %s con shape %s", self.test_path, df_test.shape)
+            self.logger.info("Test dataset cargado desde %s con shape %s", self.test_path, df_test.shape)
         except Exception as e:
-            logger.error("Error cargando test CSV %s: %s", self.test_path, e)
+            self.logger.error("Error cargando test CSV %s: %s", self.test_path, e)
             return metrics
 
         # Determinar target
@@ -441,7 +411,7 @@ class Model_Evaluation:
         try:
             y_pred = model.predict(X_test)
         except Exception as e:
-            logger.error("Error en predict sobre test: %s", e)
+            self.logger.error("Error en predict sobre test: %s", e)
             return metrics
 
         try:
@@ -450,7 +420,7 @@ class Model_Evaluation:
             metrics["recall"] = recall_score(y_test, y_pred, average="binary" if len(np.unique(y_test)) == 2 else "macro", zero_division=0)
             metrics["f1_score"] = f1_score(y_test, y_pred, average="binary" if len(np.unique(y_test)) == 2 else "macro", zero_division=0)
         except Exception as e:
-            logger.error("Error calculando métricas en test: %s", e)
+            self.logger.error("Error calculando métricas en test: %s", e)
 
         try:
             if len(np.unique(y_test)) == 2 and hasattr(model, "predict_proba"):
@@ -471,7 +441,7 @@ class Model_Evaluation:
                         metrics[key] = m_val
                         metrics[key.replace("-", "_")] = m_val
         except Exception as e:
-            logger.warning("No se pudo generar classification_report para test: %s", e)
+            self.logger.warning("No se pudo generar classification_report para test: %s", e)
 
         # Guardar metrics test en final_model con nombre claro
         try:
@@ -480,11 +450,11 @@ class Model_Evaluation:
             os.makedirs(os.path.dirname(dst_metrics), exist_ok=True)
             with open(dst_metrics, "w") as f:
                 json.dump(metrics, f, indent=2)
-            logger.info("Métricas de test guardadas en %s", dst_metrics)
+            self.logger.info("Métricas de test guardadas en %s", dst_metrics)
             # también actualizar self.final_metrics_path para consistencia
             self.final_metrics_path = dst_metrics
         except Exception as e:
-            logger.error("No se pudieron guardar metrics de test: %s", e)
+            self.logger.error("No se pudieron guardar metrics de test: %s", e)
 
         # Log a MLflow run para métricas de test (usar nested si hay run activa)
         try:
@@ -499,18 +469,18 @@ class Model_Evaluation:
                         pass
                 mlflow.set_tag("final_test_eval", os.path.basename(selected_model_path))
         except Exception as e:
-            logger.warning("No se pudo loggear métricas de test en MLflow: %s", e)
+            self.logger.warning("No se pudo loggear métricas de test en MLflow: %s", e)
 
         return metrics
 
     def evaluate_and_log(self, model_path: str, meta_path: str, X_val: pd.DataFrame, y_val: pd.Series) -> Dict[str, float]:
         """Evalúa un modelo y registra resultados en MLflow"""
-        logger.info(f"Evaluando modelo: {model_path}")
+        self.logger.info(f"Evaluando modelo: {model_path}")
         try:
             model = joblib.load(model_path)
-            logger.debug("Modelo cargado %s", model_path)
+            self.logger.debug("Modelo cargado %s", model_path)
         except Exception as e:
-            logger.error("No se pudo cargar %s: %s", model_path, e)
+            self.logger.error("No se pudo cargar %s: %s", model_path, e)
             return {}
 
         model_name = os.path.splitext(os.path.basename(model_path))[0]
@@ -523,7 +493,7 @@ class Model_Evaluation:
                 with open(meta_path, "r") as mf:
                     model_params = json.load(mf).get("params", {})
             except Exception as e:
-                logger.warning("No se pudo leer meta para %s: %s", model_path, e)
+                self.logger.warning("No se pudo leer meta para %s: %s", model_path, e)
 
         metrics_dict = {}
 
@@ -536,16 +506,16 @@ class Model_Evaluation:
                     try:
                         mlflow.log_param(k, v)
                     except Exception:
-                        logger.debug("No se pudo loggear param %s=%s", k, v)
+                        self.logger.debug("No se pudo loggear param %s=%s", k, v)
                 mlflow.log_param("model_name", model_name)
                 mlflow.set_tag("model_name", model_name)
 
                 # Predicción
                 try:
                     y_pred = model.predict(X_val)
-                    logger.debug("Predicción completada para %s", model_name)
+                    self.logger.debug("Predicción completada para %s", model_name)
                 except Exception as e:
-                    logger.error("Error en predict para %s: %s", model_name, e)
+                    self.logger.error("Error en predict para %s: %s", model_name, e)
                     return {}
 
                 probs = None
@@ -562,7 +532,7 @@ class Model_Evaluation:
                     rec = recall_score(y_val, y_pred, average="binary" if len(np.unique(y_val)) == 2 else "macro", zero_division=0)
                     f1 = f1_score(y_val, y_pred, average="binary" if len(np.unique(y_val)) == 2 else "macro", zero_division=0)
                 except Exception as e:
-                    logger.error("Error calculando métricas para %s: %s", model_name, e)
+                    self.logger.error("Error calculando métricas para %s: %s", model_name, e)
                     return {}
 
                 auc = None
@@ -581,7 +551,7 @@ class Model_Evaluation:
                     if auc is not None:
                         mlflow.log_metric("roc_auc", float(auc))
                 except Exception as e:
-                    logger.warning("No se pudieron loggear algunas métricas para %s: %s", model_name, e)
+                    self.logger.warning("No se pudieron loggear algunas métricas para %s: %s", model_name, e)
 
                 metrics_dict.update({
                     "accuracy": acc,
@@ -607,7 +577,7 @@ class Model_Evaluation:
                                 except Exception:
                                     pass
                 except Exception as e:
-                    logger.warning("No se pudo generar classification_report para %s: %s", model_name, e)
+                    self.logger.warning("No se pudo generar classification_report para %s: %s", model_name, e)
 
                 # Guardar matriz de confusión
                 try:
@@ -619,9 +589,9 @@ class Model_Evaluation:
                     cm_file = os.path.join(self.cm_dir, f"confusion_{model_name}.png")
                     plt.savefig(cm_file)
                     plt.close()
-                    logger.info(f"Confusion matrix guardada en {cm_file}")
+                    self.logger.info(f"Confusion matrix guardada en {cm_file}")
                 except Exception as e:
-                    logger.error("No se pudo guardar la matriz de confusión para %s: %s", model_name, e)
+                    self.logger.error("No se pudo guardar la matriz de confusión para %s: %s", model_name, e)
 
                 # Guardar el metrics_dict localmente en models/metrics/
                 try:
@@ -629,9 +599,9 @@ class Model_Evaluation:
                     model_metrics_file = os.path.join(self.metrics_dir, f"{model_basename}_metrics.json")
                     with open(model_metrics_file, "w") as mf:
                         json.dump(metrics_dict, mf, indent=2)
-                    logger.info(f"Métricas de {model_basename} guardadas en {model_metrics_file}")
+                    self.logger.info(f"Métricas de {model_basename} guardadas en {model_metrics_file}")
                 except Exception as e:
-                    logger.warning(f"No se pudieron guardar métricas para {model_name}: {e}")
+                    self.logger.warning(f"No se pudieron guardar métricas para {model_name}: {e}")
 
                 # Guardar modelo en MLflow (no crítico)
                 try:
@@ -644,12 +614,12 @@ class Model_Evaluation:
                 try:
                     mlflow.sklearn.log_model(model, artifact_path=model_name, signature=signature, input_example=input_example)
                 except Exception as e:
-                    logger.warning("Fallo mlflow.sklearn.log_model para %s: %s", model_name, e)
+                    self.logger.warning("Fallo mlflow.sklearn.log_model para %s: %s", model_name, e)
 
                 mlflow.set_tag("model_name", model_name)
-                logger.info("Modelo %s evaluado y registrado en MLflow", model_name)
+                self.logger.info("Modelo %s evaluado y registrado en MLflow", model_name)
             except Exception as e:
-                logger.error("Error evaluando %s: %s", model_path, e)
+                self.logger.error("Error evaluando %s: %s", model_path, e)
 
         return metrics_dict
 
@@ -676,7 +646,7 @@ class Model_Evaluation:
 
         # Buscar todos los modelos .pkl
         pkl_paths = glob.glob(os.path.join(self.models_dir, "**", "*.pkl"), recursive=True)
-        logger.info(f"Modelos (.pkl) encontrados: {len(pkl_paths)}")
+        self.logger.info(f"Modelos (.pkl) encontrados: {len(pkl_paths)}")
 
         for model_path in pkl_paths:
             fname = os.path.basename(model_path)
@@ -690,7 +660,7 @@ class Model_Evaluation:
                 }
 
         if not all_metrics:
-            logger.warning("No se evaluaron modelos correctamente; no hay ninguno para promover.")
+            self.logger.warning("No se evaluaron modelos correctamente; no hay ninguno para promover.")
             return
 
         # Guardar resumen clean_metrics en models/metrics/
@@ -704,9 +674,9 @@ class Model_Evaluation:
         try:
             with open(self.metrics_file, "w") as f:
                 json.dump(clean_metrics, f, indent=2)
-            logger.info("Archivo metrics_summary.json generado en %s", self.metrics_file)
+            self.logger.info("Archivo metrics_summary.json generado en %s", self.metrics_file)
         except Exception as e:
-            logger.error("No se pudo escribir metrics_summary en %s: %s", self.metrics_file, e)
+            self.logger.error("No se pudo escribir metrics_summary en %s: %s", self.metrics_file, e)
 
         # Calcular score ponderado para selección
         scored = []
@@ -715,20 +685,20 @@ class Model_Evaluation:
             try:
                 score = self._compute_selection_score(mets)
             except Exception as e:
-                logger.error("Error calculando score para %s: %s", model_name, e)
+                self.logger.error("Error calculando score para %s: %s", model_name, e)
                 score = 0.0
             scored.append((model_name, info.get("model_path"), score, mets, info.get("meta_path")))
 
         # Ordenar por score descendente
         scored.sort(key=lambda x: x[2], reverse=True)
         best_model_name, best_model_path, best_score, best_metrics, best_meta = scored[0]
-        logger.info("Mejor modelo: %s con score %s", best_model_name, best_score)
+        self.logger.info("Mejor modelo: %s con score %s", best_model_name, best_score)
 
         # Promover modelo final (copia .pkl y validación dentro de final_model)
         try:
             self._promote_final_model(best_model_path, best_model_name, best_metrics)
         except Exception as e:
-            logger.error("No se pudo promover el modelo final: %s", e)
+            self.logger.error("No se pudo promover el modelo final: %s", e)
 
         # --- Único run MLflow para selección + métricas de test ---
         test_metrics = {}
@@ -747,7 +717,7 @@ class Model_Evaluation:
 
                 mlflow.set_tag("selected_as_final", best_model_name)
         except Exception as e:
-            logger.warning("No se pudo loggear selección y test metrics en MLflow: %s", e)
+            self.logger.warning("No se pudo loggear selección y test metrics en MLflow: %s", e)
 
         # Guardar resumen local (selection_summary.json)
         try:
@@ -761,9 +731,9 @@ class Model_Evaluation:
             selection_file = os.path.join(self.root_dir, "models", "selection_summary.json")
             with open(selection_file, "w") as sf:
                 json.dump(selection_summary, sf, indent=2)
-            logger.info("Selection summary guardado en %s", selection_file)
+            self.logger.info("Selection summary guardado en %s", selection_file)
         except Exception as e:
-            logger.warning("No se pudo guardar selection_summary: %s", e)
+            self.logger.warning("No se pudo guardar selection_summary: %s", e)
 
 
 def main():
@@ -773,7 +743,7 @@ def main():
         evaluator = Model_Evaluation(params_path)
         evaluator.evaluate_all()
     except Exception as e:
-        logger.error("Error en main de model_evaluation: %s", e)
+        evaluator.logger.error("Error en main de model_evaluation: %s", e)
         raise
 
 

@@ -6,37 +6,18 @@ from sklearn.model_selection import train_test_split
 import kagglehub
 import shutil
 import zipfile
+from utils import create_logger, BaseUtils
 
 # Logging configuration
-logger = logging.getLogger("data_ingestion")
-logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-file_handler = logging.FileHandler("errors.log")
-file_handler.setLevel(logging.ERROR)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-file_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
+logger = create_logger('data_ingestion', 'ingestion_errors.log')
 
-class DataIngestion:
+class DataIngestion(BaseUtils):
     def __init__(self, params_path: str, raw_data_dir: str, original_data_dir: str):
-        self.params_path = params_path
+        super().__init__(logger=logger,params_path=params_path)
         self.raw_data_dir = raw_data_dir
         self.original_data_dir = original_data_dir
         self.params = self.load_params()
         self.df = None
-
-    def load_params(self) -> dict:
-        try:
-            with open(self.params_path, 'r') as f:
-                params = yaml.safe_load(f)
-            logger.debug(f"Parameters loaded from {self.params_path}")
-            return params
-        except Exception as e:
-            logger.error(f"Error loading YAML parameters: {e}")
-            raise
 
     def download_data(self) -> pd.DataFrame:
         try:
@@ -44,7 +25,7 @@ class DataIngestion:
             dataset_path = kagglehub.dataset_download(
                 "nelgiriyewithana/credit-card-fraud-detection-dataset-2023"
             )
-            logger.debug(f"Dataset downloaded to {dataset_path}")
+            self.logger.debug(f"Dataset downloaded to {dataset_path}")
 
             # Crear carpetas
             os.makedirs(self.raw_data_dir, exist_ok=True)
@@ -64,30 +45,30 @@ class DataIngestion:
             elif csv_files:
                 for csv_file in csv_files:
                     shutil.copy(os.path.join(dataset_path, csv_file), self.original_data_dir)
-                logger.debug(f"CSV files copied to {self.original_data_dir}")
+                self.logger.debug(f"CSV files copied to {self.original_data_dir}")
                 csv_path = os.path.join(self.original_data_dir, csv_files[0])
             else:
                 raise FileNotFoundError(f"No ZIP or CSV found in {dataset_path}")
 
             # Leer CSV
             df = pd.read_csv(csv_path)
-            logger.debug(f"Dataset loaded from {csv_path}")
+            self.logger.debug(f"Dataset loaded from {csv_path}")
             self.df = df
             return df
 
         except Exception as e:
-            logger.error(f"Error downloading/loading dataset: {e}")
+            self.logger.error(f"Error downloading/loading dataset: {e}")
             raise
 
     def preprocess_data(self) -> pd.DataFrame:
         try:
             df = self.df.copy()
             df.drop_duplicates(inplace=True)
-            logger.debug("Data preprocessing completed")
+            self.logger.debug("Data preprocessing completed")
             self.df = df
             return df
         except Exception as e:
-            logger.error(f"Error during preprocessing: {e}")
+            self.logger.error(f"Error during preprocessing: {e}")
             raise
 
     def split_data(self) -> dict:
@@ -133,11 +114,11 @@ class DataIngestion:
             test = pd.concat([test_fraud, test_auth]).sample(frac=1, random_state=42)
             predict = pd.concat([pred_fraud, pred_auth]).sample(frac=1, random_state=42)
 
-            logger.debug(f"Data split completed: train={len(train)}, val={len(val)}, test={len(test)}, predict={len(predict)}")
+            self.logger.debug(f"Data split completed: train={len(train)}, val={len(val)}, test={len(test)}, predict={len(predict)}")
             return {'train': train, 'val': val, 'test': test, 'predict': predict}
 
         except Exception as e:
-            logger.error(f"Error during data splitting: {e}")
+            self.logger.error(f"Error during data splitting: {e}")
             raise
 
     def save_data(self, data_splits: dict):
@@ -146,9 +127,9 @@ class DataIngestion:
             for split_name, df_split in data_splits.items():
                 file_path = os.path.join(self.raw_data_dir, f"{split_name}.csv")
                 df_split.to_csv(file_path, index=False)
-                logger.debug(f"{split_name} data saved to {file_path}")
+                self.logger.debug(f"{split_name} data saved to {file_path}")
         except Exception as e:
-            logger.error(f"Error saving data splits: {e}")
+            self.logger.error(f"Error saving data splits: {e}")
             raise
 
 # Entrypoint
@@ -166,7 +147,7 @@ def main():
         ingestion.save_data(splits)
 
     except Exception as e:
-        logger.error(f"Failed to complete the data ingestion pipeline: {e}")
+        ingestion.logger.error(f"Failed to complete the data ingestion pipeline: {e}")
         print(f"Error: {e}")
 
 if __name__ == "__main__":
