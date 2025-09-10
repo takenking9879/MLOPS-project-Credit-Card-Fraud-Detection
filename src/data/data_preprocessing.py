@@ -70,12 +70,26 @@ class DataPreprocessing(BaseUtils):
                 raise
         return datasets
 
+    def fit_imputer(self, df: pd.DataFrame) -> None:
+        """
+        Fit the imputer using the provided DataFrame (without the target column)
+        and logs the operation.
+        """
+        try:
+            data = df.drop(columns=['Class'], errors='ignore')
+            self.imputer.fit(data)
+            self.logger.debug("Imputer fitted with training data")
+        except Exception as e:
+            self.logger.error(f"Error fitting imputer: {e}")
+            raise
+
     def normalize(self, df: pd.DataFrame, fit: bool = True) -> pd.DataFrame:
         try:
             target = df['Class']          # <-- guardamos Class en target
             df = df.drop(columns=['Class']) 
             
             if fit:
+                self.fit_imputer(df)
                 df_scaled = self.scaler.fit_transform(df)
                 self.logger.debug("Data normalized with fit_transform")
             else:
