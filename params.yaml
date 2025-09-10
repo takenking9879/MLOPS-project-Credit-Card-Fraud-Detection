@@ -10,7 +10,7 @@ data_ingestion:
    
 data_preprocessing:
   scaler_method: 'standardscaler'
-  imputer_method: 'knnimputer'   
+  imputer_method: 'simpleimputer'   
 
 model_building:
   models:

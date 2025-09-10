@@ -53,15 +53,15 @@ stages:
       size: 71464327
     - path: src/data/data_preprocessing.py
       hash: md5
-      md5: 07111b47476ae18ade7b1d381433ff32
-      size: 7019
+      md5: d3f20c5e13268d852af06e5ac8dd7f9c
+      size: 7559
     - path: src/utils.py
       hash: md5
       md5: 496b18838dd83398611cab2728ee7a24
       size: 1892
     params:
       params.yaml:
-        data_preprocessing.imputer_method: knnimputer
+        data_preprocessing.imputer_method: simpleimputer
         data_preprocessing.scaler_method: standardscaler
     outs:
     - path: data/processed

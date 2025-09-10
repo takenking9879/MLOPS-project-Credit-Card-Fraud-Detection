@@ -19,6 +19,7 @@ class DataPreprocessing(BaseUtils):
         self.params = self.load_params()
         self.scaler = self._choose_scaler()
         self.imputer = self._choose_imputer()
+        self.columns = None  # Para guardar las columnas originales
 
     def _choose_scaler(self):
             try:
@@ -87,7 +88,7 @@ class DataPreprocessing(BaseUtils):
         try:
             target = df['Class']          # <-- guardamos Class en target
             df = df.drop(columns=['Class']) 
-            
+            self.columns = df.columns     # <-- guardamos las columnas originales
             if fit:
                 self.fit_imputer(df)
                 df_scaled = self.scaler.fit_transform(df)
@@ -122,7 +123,13 @@ class DataPreprocessing(BaseUtils):
             artifacts_dir = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')), "artifacts")
             os.makedirs(artifacts_dir, exist_ok=True)
             save_path = os.path.join(artifacts_dir, filename)
-            joblib.dump(self.scaler, save_path)
+            
+            # Guardar scaler + columnas originales
+            joblib.dump({
+                'scaler': self.scaler,
+                'columns': self.columns  # Asumiendo que guardas las columnas al fit
+            }, save_path)
+            
             self.logger.debug(f"Scaler guardado en {save_path}")
         except Exception as e:
             self.logger.error(f"No se pudo guardar el scaler: {e}")
@@ -133,7 +140,13 @@ class DataPreprocessing(BaseUtils):
             artifacts_dir = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')), "artifacts")
             os.makedirs(artifacts_dir, exist_ok=True)
             save_path = os.path.join(artifacts_dir, filename)
-            joblib.dump(self.imputer, save_path)
+            
+            # Guardar imputer + columnas originales
+            joblib.dump({
+                'imputer': self.imputer,
+                'columns': self.columns  # Usar las mismas columnas del fit
+            }, save_path)
+            
             self.logger.debug(f"imputer guardado en {save_path}")
         except Exception as e:
             self.logger.error(f"No se pudo guardar el imputer: {e}")
