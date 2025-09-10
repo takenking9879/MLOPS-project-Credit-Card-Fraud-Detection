@@ -22,13 +22,16 @@ setup(
         "scikit-learn==1.7.1",
         "scipy==1.16.1",
         "dagshub==0.6.3",
-        "xgboost==3.0.5",
+        "xgboost-cpu==3.0.5",
         "catboost==1.2.8",
         "lightgbm==4.6.0",
         "matplotlib==3.10.6",
         "seaborn==0.13.2",
         "joblib==1.5.2",
-        "ipykernel==6.30.1"
+        "ipykernel==6.30.1",
+        "statsmodels==0.14.5",
+        "watchdog==6.0.0",
+        "gunicorn==23.0.0"
     ],
     python_requires=">=3.11",
 )
