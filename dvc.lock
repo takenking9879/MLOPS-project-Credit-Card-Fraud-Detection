@@ -150,8 +150,8 @@ stages:
       nfiles: 15
     - path: src/model/model_evaluation.py
       hash: md5
-      md5: 5b5edf12330f57325df813bca509bbb2
-      size: 35110
+      md5: 2210a35518378dc15032510c31f26388
+      size: 35265
     - path: src/utils.py
       hash: md5
       md5: 496b18838dd83398611cab2728ee7a24
@@ -179,7 +179,7 @@ stages:
     outs:
     - path: models/best_model.json
       hash: md5
-      md5: 01d6116841d532cbd4cf2496499c0e96
+      md5: ddd5f0fb53285821578a757a6b7d2f7a
       size: 999
     - path: models/confusion_matrices/
       hash: md5
@@ -193,7 +193,7 @@ stages:
       nfiles: 6
     - path: models/selection_summary.json
       hash: md5
-      md5: 18dd35b64f72c0d8d98f5ebc1838a890
+      md5: 635e416ed42ad57452605d1ecb579375
       size: 1278
   model_final:
     cmd: python3 src/model/model_final.py

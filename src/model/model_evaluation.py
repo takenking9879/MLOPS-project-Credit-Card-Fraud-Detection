@@ -265,6 +265,10 @@ class Model_Evaluation(BaseUtils):
         Además, si existe un CSV de feature_importances en models_dir (output de training) o en el meta,
         lo copia a final_model.
         """
+
+        if os.path.exists(self.final_model_dir):
+            shutil.rmtree(self.final_model_dir)
+        os.makedirs(self.final_model_dir, exist_ok=True)
         try:
             # determinar destino del pkl final
             if self.final_model_path:
