@@ -1,0 +1,50 @@
+<!-- flask_app/templates/bulk.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col-8">
+    <div class="p-3 content-card">
+      <h3>Bulk upload - Predictions</h3>
+      <p class="text-muted">Sube un CSV con transacciones. Indica si ya están preprocesadas.</p>
+
+      <form method="post" enctype="multipart/form-data">
+        <div class="mb-2">
+          <label class="form-label">CSV file</label>
+          <input type="file" name="file" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">¿Ya está preprocesado?</label>
+          <select name="preprocessed" class="form-select form-select-sm">
+            <option value="no" selected>No (el app aplicará imputer/scaler)</option>
+            <option value="yes">Sí (solo aplicar predicción)</option>
+          </select>
+        </div>
+        <div class="d-grid">
+          <button class="btn btn-success">Procesar y predecir</button>
+        </div>
+      </form>
+
+      {% if result_file %}
+        <hr>
+        <h5>Resultados</h5>
+        <div class="mb-3">
+          <img src="data:image/png;base64,{{ bar_b64 }}" class="img-fluid" alt="Counts">
+        </div>
+        <p>Predicted counts: Authentic = {{ counts[0] }}, Fraudulent = {{ counts[1] }}</p>
+        <a class="btn btn-outline-primary" href="{{ url_for('download_file', filename=result_file) }}">Descargar CSV con predicciones</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-4">
+    <div class="p-3 content-card">
+      <h5>Instrucciones</h5>
+      <ul>
+        <li>CSV: columnas en formato V1..V28 y Amount (si no preprocesado el app reordenará).</li>
+        <li>Si hay columna <code>id</code> y marcas "no preprocesado" será eliminada.</li>
+        <li>El archivo resultante incluirá <code>predicted_class</code> (y <code>predicted_proba</code> si el modelo la soporta).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

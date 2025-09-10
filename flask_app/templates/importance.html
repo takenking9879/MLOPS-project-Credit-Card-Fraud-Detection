@@ -1,0 +1,31 @@
+<!-- flask_app/templates/importance.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="p-3 content-card">
+      <h3>Features en orden de importancia</h3>
+      <p class="text-muted">La gráfica muestra las features con mayor importancia arriba. Los 3 primeros resaltados.</p>
+      <div class="text-center mt-3">
+        <img src="data:image/png;base64,{{ fi_img_b64 }}" class="img-fluid" alt="Feature importances">
+      </div>
+
+      {% if fi_df is not none and not fi_df.empty %}
+        <div class="mt-3">
+          <h5>Top features</h5>
+          <table class="table table-sm">
+            <thead><tr><th>Feature</th><th>Importance</th></tr></thead>
+            <tbody>
+              {% for idx, row in fi_df.head(10).iterrows() %}
+                <tr><td>{{ row.feature }}</td><td>{{ '%.6f'|format(row.importance) }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="mt-3 text-muted">No hay datos de importancia de features disponibles.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

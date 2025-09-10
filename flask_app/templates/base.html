@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Credit Card Fraud Detection - Demo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: linear-gradient(180deg, #f6f9ff, #ffffff); }
+    .sidebar { background: linear-gradient(180deg,#0f172a,#0b3a66); color: white; min-height: 100vh; }
+    .sidebar a { color: rgba(255,255,255,0.9); text-decoration: none; display:block; padding:10px 14px; border-radius:6px; }
+    .sidebar a:hover { background: rgba(255,255,255,0.06); color: #fff; text-decoration: none; }
+    .brand { font-weight:700; font-size:1.1rem; padding:18px; display:block; color:#fff; }
+    .content-card { box-shadow: 0 8px 30px rgba(12, 36, 97, .08); border-radius: 12px; }
+    .control-panel { background: linear-gradient(180deg, #ffffff, #f8fafc); border-left: 1px solid #e6eef8; }
+    .nav-title { font-size: 0.98rem; opacity:0.9; padding:12px 14px; }
+    footer { font-size: 0.8rem; color: #6b7280; padding-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <aside class="sidebar p-3" style="width:230px;">
+      <div class="brand">🚀 Fraud Detector</div>
+      <div class="nav-title">Navegación</div>
+      <nav class="mb-3">
+        <a href="{{ url_for('index') }}">🏠 Home</a>
+        <a href="{{ url_for('importance') }}">📊 Importances</a>
+        <a href="{{ url_for('bulk') }}">📥 Bulk upload</a>
+        <a href="{{ url_for('history_page') }}">🕒 History</a>
+      </nav>
+      <div class="mt-auto" style="position: absolute; bottom: 20px; left: 16px; right:16px;">
+        <small>Made with ❤️ · Credit Card Fraud Detection 2023</small>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-fill p-4">
+      <div class="container-fluid">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="mb-3">
+              {% for cat, msg in messages %}
+                <div class="alert alert-{{ 'warning' if cat=='warning' else ('success' if cat=='success' else 'danger') }}" role="alert">
+                  {{ msg }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+        <footer class="mt-4">© {{ 2025 }} - Proyecto Demo</footer>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

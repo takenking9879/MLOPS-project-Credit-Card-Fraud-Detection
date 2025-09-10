@@ -1,0 +1,69 @@
+<!-- flask_app/templates/index.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-4">
+  <!-- center explanation -->
+  <div class="col-12 col-lg-7">
+    <div class="p-4 content-card">
+      <h3>Credit Card Fraud Detection 2023</h3>
+      <p class="text-muted">Proyecto de detección de fraude en transacciones de tarjeta de crédito. El dataset contiene:</p>
+      <ul>
+        <li><strong>id</strong>: identificador único</li>
+        <li><strong>V1 - V28</strong>: features anonimizados</li>
+        <li><strong>Amount</strong>: monto de la transacción</li>
+        <li><strong>Class</strong>: etiqueta (1 = fraudulenta, 0 = auténtica)</li>
+      </ul>
+      <p>La distribución original fue balanceada; para hacer el reto más realista se modificó.</p>
+
+      {% if single_pred %}
+        <div class="alert alert-info">
+          <h5>Predicción: <strong>{{ pred_label }}</strong></h5>
+          {% if pred_prob is not none %}
+            <p>Probabilidad (fraude): {{ '%.3f' | format(pred_prob) }}</p>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% if artifacts.metrics %}
+        <div class="mt-3">
+          <h5>Métricas (modelo):</h5>
+          <pre style="background:#fbfbff;padding:10px;border-radius:6px;">{{ artifacts.metrics | tojson(indent=2) }}</pre>
+        </div>
+      {% endif %}
+
+      {% if fi_img_b64 %}
+        <div class="mt-3">
+          <h5>Preview - feature importances</h5>
+          <img src="data:image/png;base64,{{ fi_img_b64 }}" class="img-fluid" alt="FI preview">
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- left empty col for layout balancing (small) -->
+  <div class="col-12 col-lg-2"></div>
+
+  <!-- right input panel -->
+  <div class="col-12 col-lg-3">
+    <div class="p-3 control-panel content-card">
+      <h5>Predict single transaction</h5>
+      <form method="post" action="{{ url_for('predict') }}">
+        <small class="text-muted">Rellena los campos (si dejas vacíos usar el imputer fiteado)</small>
+        <div class="mt-2" style="max-height:60vh; overflow:auto;">
+          {% set cols = artifacts.imputer_data.columns if artifacts.imputer_data else (artifacts.scaler_data.columns if artifacts.scaler_data else []) %}
+          {% for c in cols %}
+            <div class="mb-2">
+              <label class="form-label" style="font-size:0.85rem;">{{ c }}</label>
+              <input name="{{ c }}" class="form-control form-control-sm" placeholder="value or leave blank">
+            </div>
+          {% endfor %}
+        </div>
+        <div class="d-grid mt-2">
+          <button class="btn btn-primary">Predecir</button>
+        </div>
+      </form>
+      <small class="text-muted d-block mt-2">Si faltan valores se rellenarán con el imputer guardado.</small>
+    </div>
+  </div>
+</div>
+{% endblock %}

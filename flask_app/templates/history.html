@@ -1,0 +1,56 @@
+<!-- templates/history.html (esqueleto) -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Artifact History</title>
+  <style>
+    /* Estilito sencillo: lista vertical tipo timeline */
+    .timeline { max-width: 900px; margin: 20px auto; padding: 0; list-style: none; }
+    .entry { padding: 12px; margin: 6px 0; border-radius: 8px; background: #f7f9fc; display:flex; justify-content:space-between; align-items:center; }
+    .entry.latest { background: linear-gradient(90deg,#e8f0ff,#ffffff); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .meta { font-size: 0.9em; color:#444; }
+    .note { font-size: 0.8em; color:#666; }
+  </style>
+</head>
+<body>
+  <h1>Artifact History</h1>
+  <p>Latest: {{ latest.human_ts if latest else "none" }}</p>
+  <ul id="timeline" class="timeline">
+    {% for e in history %}
+      <li class="entry {% if loop.last %}latest{% endif %}">
+        <div>
+          <strong>{{ e.human_ts }}</strong><div class="meta">{{ e.model_pkl|default("no model") }}</div>
+          <div class="note">{{ e.note|default("") }}</div>
+        </div>
+        <div>
+          {% if loop.last %}<em>latest</em>{% else %}#{% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+
+<script>
+  // SSE subscription to update UI in real time
+  const evtSource = new EventSource("/history/stream");
+  evtSource.addEventListener("history_update", function(ev) {
+    try {
+      const payload = JSON.parse(ev.data);
+      // simple strategy: reload the fragment
+      // you can do fancier DOM updates instead of full reload
+      fetch("/history.json").then(r=>r.json()).then(data=>{
+         // rebuild timeline
+         const ul = document.getElementById("timeline");
+         ul.innerHTML = "";
+         data.forEach((e, i) => {
+           const li = document.createElement("li");
+           li.className = "entry" + (i===data.length-1 ? " latest" : "");
+           li.innerHTML = `<div><strong>${e.human_ts}</strong><div class="meta">${e.model_pkl||""}</div><div class="note">${e.note||""}</div></div><div>${i===data.length-1 ? "<em>latest</em>" : ""}</div>`;
+           ul.appendChild(li);
+         });
+      });
+    } catch (e) { console.error(e); }
+  }, false);
+</script>
+</body>
+</html>
