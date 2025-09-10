@@ -23,7 +23,6 @@ setup(
         "scipy==1.16.1",
         "dagshub==0.6.3",
         "xgboost-cpu==3.0.5",
-        "catboost==1.2.8",
         "lightgbm==4.6.0",
         "matplotlib==3.10.6",
         "seaborn==0.13.2",

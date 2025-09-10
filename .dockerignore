@@ -1,0 +1,25 @@
+# Git
+.git
+.gitignore
+
+# DVC
+.dvc
+.dvc/cache
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+
+# Jupyter / VSCode
+.ipynb_checkpoints
+.vscode
+*.swp
+
+# Datos grandes
+data/
+
+# Caches
+*.cache
