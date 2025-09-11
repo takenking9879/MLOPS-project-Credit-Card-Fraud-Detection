@@ -122,4 +122,4 @@ Proyecto **end-to-end MLOps** para detección de fraude en transacciones con tar
 💡 **Notas:**  
 - Pipeline preparado para manejar datos nuevos con posibles valores faltantes  
 - Sistema flexible para probar cualquier modelo y automatizar la selección del mejor  
-- Experimentos y métricas registrados automáticamente en MLflow 
+- Experimentos y métricas registrados automáticamente en MLflow
