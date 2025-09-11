@@ -110,11 +110,12 @@ Proyecto **end-to-end MLOps** para detección de fraude en transacciones con tar
 
 1. Clonar el repositorio
 2. Configurar GitHub secrets
-3. Obtener el token para registrar un self-hosted runner en GitHub Actions
-4. Ejecutar Terraform para crear infraestructura
-5. Configurar el secret de URI
-6. Iniciar CI/CD para desplegar la app
-7. Acceder a la aplicación desde la dirección pública del EC2
+3. Eliminar cualquier runner anterior
+4. Obtener el token para registrar un self-hosted runner en GitHub Actions
+5. Ejecutar Terraform para crear infraestructura en el directorio correspondiente (terraform/)
+6. Configurar el secret de URI
+7. Iniciar CI/CD para desplegar la app
+8. Acceder a la aplicación desde la dirección pública del EC2
 
 ---
 

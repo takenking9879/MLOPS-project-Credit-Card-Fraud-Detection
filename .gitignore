@@ -221,6 +221,7 @@ terraform/modules/ecr/main.tf
 terraform/modules/keypair/main.tf
 terraform/modules/security_group/main.tf
 terraform/variables.tf
+*.pem
 
 # Overrides locales
 override.tf

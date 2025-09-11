@@ -55,4 +55,5 @@ module "ec2" {
   subnet_id      = data.aws_subnets.default.ids[0]
   runner_token   = var.runner_token
   app_port       = var.app_port
+  github_url    = var.github_url
 }
