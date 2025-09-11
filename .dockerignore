@@ -21,5 +21,13 @@ __pycache__/
 # Datos grandes
 data/
 
+# Archivos auxiliares
+notebooks/
+quitar_labels.py
+
+# Modelos entrenados
+models/saved_models/
+models/confusion_matrices/
+
 # Caches
 *.cache
