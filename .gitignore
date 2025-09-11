@@ -206,3 +206,23 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+#Ignorar el csv de testo
+predict_sin_labels.csv
+
+# Terraform state y backups (sensible)
+*.tfstate
+*.tfstate.backup
+*.tfplan
+
+# Plugins y dependencias locales
+.terraform/
+terraform/modules/ec2/main.tf
+terraform/modules/ecr/main.tf
+terraform/modules/keypair/main.tf
+terraform/modules/security_group/main.tf
+terraform/variables.tf
+
+# Overrides locales
+override.tf
+override.tf.json
+*_override.tf

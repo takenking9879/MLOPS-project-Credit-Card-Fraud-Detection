@@ -31,3 +31,6 @@ models/confusion_matrices/
 
 # Caches
 *.cache
+
+# Terraform
+terraform/
