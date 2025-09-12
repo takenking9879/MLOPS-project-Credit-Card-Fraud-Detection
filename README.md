@@ -23,7 +23,7 @@ Proyecto **end-to-end MLOps** para detección de fraude en transacciones con tar
 - **Despliegue:** Flask + Docker  
 - **CI/CD:** GitHub Actions  
 - **Infraestructura en AWS:** ECR + EC2 + self-hosted runner  
-- **Automatización:** Terraform (Crea el ECR + EC2)
+- **Automatización:** Terraform (Crea el ECR + EC2 e instalar docker)
 
 ---
 
@@ -113,7 +113,7 @@ Proyecto **end-to-end MLOps** para detección de fraude en transacciones con tar
 3. Eliminar cualquier runner anterior
 4. Obtener el token para registrar un self-hosted runner en GitHub Actions
 5. Ejecutar Terraform para crear infraestructura en el directorio correspondiente (terraform/)
-6. Configurar manualmente el runner en la cmd de la instancia de EC2 y docker
+6. Configurar manualmente el runner en la cmd de la instancia de EC2
 7. Iniciar CI/CD para desplegar la app
 8. Acceder a la aplicación desde la dirección pública del EC2
 
