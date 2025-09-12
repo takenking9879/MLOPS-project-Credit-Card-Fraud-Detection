@@ -1,27 +1,10 @@
-terraform {
-required_version = ">= 1.0"
-required_providers {
-aws = {
-source = "hashicorp/aws"
-version = "~> 5.0"
-}
-tls = {
-source = "hashicorp/tls"
-version = "~> 4.0"
-}
-local = {
-source = "hashicorp/local"
-version = "~> 2.0"
-}
-}
-}
-
 provider "aws" {
-region = var.region
+  region = var.aws_region
 }
 
+# --- Fuentes de datos ---
 data "aws_vpc" "default" {
-default = true
+  default = true
 }
 
 data "aws_subnets" "default" {
@@ -31,41 +14,46 @@ data "aws_subnets" "default" {
   }
 }
 
-resource "aws_security_group" "app_sg" {
-  name        = var.sec_group
-  description = "Security group for the app"
+# --- Recursos de AWS ---
+
+## Repositorio ECR
+resource "aws_ecr_repository" "mlops_credit" {
+  name = var.ecr_repo_name
+}
+
+## Security Group
+resource "aws_security_group" "my_app_sg" {
+  name        = var.security_group_name
+  description = "Security group for application"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow HTTP"
   }
-
   ingress {
-    description = "HTTPS"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow HTTPS"
   }
-
   ingress {
-    description = "App port"
     from_port   = var.app_port
     to_port     = var.app_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow App Port"
   }
-
   ingress {
-    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow SSH"
   }
 
   egress {
@@ -76,74 +64,54 @@ resource "aws_security_group" "app_sg" {
   }
 
   tags = {
-    Name = var.sec_group
+    Name = var.security_group_name
   }
 }
 
-// Generamos una llave privada (PEM) localmente y registramos la public key en AWS
-resource "tls_private_key" "key" {
-algorithm = "RSA"
-rsa_bits = 4096
+## Generar el par de llaves localmente
+resource "tls_private_key" "my_ec2_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }
 
-resource "aws_key_pair" "deployer" {
-key_name = var.key_name
-public_key = tls_private_key.key.public_key_openssh
+resource "local_file" "my_ec2_key_pem" {
+  filename        = "my-ec2-key.pem"
+  content         = tls_private_key.my_ec2_key.private_key_pem
+  file_permission = "0400"
 }
 
-resource "local_file" "private_key" {
-content = tls_private_key.key.private_key_pem
-filename = "${path.module}/${var.key_name}.pem"
-file_permission = "0400"
+resource "local_file" "my_ec2_key_pub" {
+  filename = "my-ec2-key.pub"
+  content  = tls_private_key.my_ec2_key.public_key_openssh
 }
 
-resource "aws_ecr_repository" "repo" {
-  name = var.ecr_repo
+## Key Pair EC2
+resource "aws_key_pair" "my_ec2_key" {
+  key_name   = var.key_pair_name
+  public_key = tls_private_key.my_ec2_key.public_key_openssh
 }
 
-resource "aws_instance" "app" {
-ami = var.ami_id
-instance_type = var.instance_type
-subnet_id = element(data.aws_subnets.default.ids, 0)
-vpc_security_group_ids = [aws_security_group.app_sg.id]
-key_name = aws_key_pair.deployer.key_name
-tags = {
-Name = "my-app-instance"
+## Instancia EC2
+resource "aws_instance" "my_app_instance" {
+  ami                   = var.ami_id
+  instance_type          = var.instance_type
+  key_name               = aws_key_pair.my_ec2_key.key_name
+  vpc_security_group_ids = [aws_security_group.my_app_sg.id]
+  subnet_id              = element(data.aws_subnets.default.ids, 0)
+
+  root_block_device {
+    volume_size = 30
+  }
+
+  tags = {
+    Name = "my-app-instance"
+  }
+}
+# --- Outputs ---
+output "ec2_public_ip" {
+  value = aws_instance.my_app_instance.public_ip
 }
 
-
-root_block_device {
-volume_size = 30
-}
-
-# user_data replica el script de provisioning que tenías por SSH
-user_data = <<-EOF
-#!/bin/bash
-set -e
-
-
-sudo apt-get update -y
-sudo apt-get upgrade -y
-
-
-# Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker ubuntu
-newgrp docker
-
-
-# Crear carpeta del runner como ubuntu
-mkdir -p actions-runner && cd actions-runner
-chown ubuntu:ubuntu /home/ubuntu/actions-runner
-curl -o actions-runner-linux-x64-2.328.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz
-echo "01066fad3a2893e63e6ca880ae3a1fad5bf9329d60e77ee15f2b97c148c3cd4e  actions-runner-linux-x64-2.328.0.tar.gz" | shasum -a 256 -c
-tar xzf ./actions-runner-linux-x64-2.328.0.tar.gz
-
-./config.sh --url ${var.repo_url} \
- --token ${var.token} \
- --name self-hosted \
- --unattended
-./run.sh &
-EOF
+output "ecr_uri" {
+  value = aws_ecr_repository.mlops_credit.repository_url
 }
