@@ -91,7 +91,7 @@ resource "aws_key_pair" "my_ec2_key" {
   public_key = tls_private_key.my_ec2_key.public_key_openssh
 }
 
-## Instancia EC2
+## Instancia EC2 
 resource "aws_instance" "my_app_instance" {
   ami                   = var.ami_id
   instance_type          = var.instance_type
@@ -103,10 +103,22 @@ resource "aws_instance" "my_app_instance" {
     volume_size = 30
   }
 
+  # Script de inicialización al lanzar la instancia
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt-get update -y
+              sudo apt-get upgrade -y
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sudo sh get-docker.sh
+              sudo usermod -aG docker ubuntu
+              newgrp docker
+              EOF
+
   tags = {
     Name = "my-app-instance"
   }
 }
+
 # --- Outputs ---
 output "ec2_public_ip" {
   value = aws_instance.my_app_instance.public_ip
@@ -115,3 +127,4 @@ output "ec2_public_ip" {
 output "ecr_uri" {
   value = aws_ecr_repository.mlops_credit.repository_url
 }
+
