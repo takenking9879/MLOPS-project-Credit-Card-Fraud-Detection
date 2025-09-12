@@ -223,3 +223,4 @@ terraform/variables.tf
 override.tf
 override.tf.json
 *_override.tf
+terraform/my-ec2-key.pub
