@@ -100,7 +100,8 @@ Proyecto **end-to-end MLOps** para detección de fraude en transacciones con tar
 
 - App empaquetada con **Docker**  
 - CI/CD automatizado con **GitHub Actions**  
-- Terraform crea **ECR y EC2** y configura runner automáticamente  
+- Terraform crea **ECR y EC2** y descarga docker automáticamente
+- Se tiene que inicial manualmente el runner en la cmd de la instancia EC2 
 - Solo se requiere **GitHub token y secrets**  
 - Acceso a la app mediante la dirección pública del EC2
 
